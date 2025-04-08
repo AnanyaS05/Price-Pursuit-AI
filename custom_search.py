@@ -18,6 +18,7 @@ class CustomSearch:
                 c2coff=1, # To disable search results in chinese
                 hl="en" # To search in English language
             ).execute()
+            
             items = search["items"]
             urls = [item["link"] for item in items] # Extracting URLs from search results
             return urls

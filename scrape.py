@@ -23,7 +23,7 @@ class Scrape:
                 __page.goto(url, timeout=60000)
                 __html = __page.content()
                 __soup = BeautifulSoup(__html, "html.parser")
-                __text_elements = __soup.find_all(["p", "h1", "h2", "h3", "h4", "h5", "h6", "span"])
+                __text_elements = __soup.find_all(["p", "h1", "h2", "h3", "h4", "h5", "h6", "span", "a", "li", "ul", "main", "div", "article"])
                 __text = "\n".join([elem.get_text(strip=True) for elem in __text_elements])
                 __document = Document(page_content=f"{__text}",
                                     metadata={"source": url})
