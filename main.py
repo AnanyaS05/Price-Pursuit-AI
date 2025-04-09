@@ -12,10 +12,14 @@ from custom_search import CustomSearch
 from scrape import Scrape
 
 import json
+<<<<<<< HEAD
 import database
+=======
+>>>>>>> 9cdfaf2204ff5da920a6ea4f5c532c087992e43a
 
 customSearch = CustomSearch()
 scrapeTool = Scrape()
+import database
 
 app = FastAPI()
 
@@ -75,6 +79,7 @@ message = SystemMessage(
 
 priceAgent = Agent([web_search_tool], [message])
 
+<<<<<<< HEAD
 class PriceRequest(BaseModel):
     user_input : str
 
@@ -105,6 +110,31 @@ async def get_price_endpoint(request: PriceRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+=======
+# --- Main function ---
+def get_product_price(user_input: str) -> str:
+    """Takes a product name, queries the backend, and returns the price info."""
+    # Invoke the backend  gent
+    result = priceAgent.graph.invoke({"messages": [HumanMessage(content=user_input)]})
+
+    # Extract and return the final message content
+    output = result["messages"][-1].content
+
+    print(output)
+    opening_index = output.index("{")
+    closing_index = output.index("}")
+    formatted_output = output[opening_index:(closing_index+1)]
+    
+    json_output = json.loads(formatted_output)
+
+    str_output = ""
+
+    for i in json_output:
+        database.execute_query(i, float(str(json_output[i][0]).strip("$")), float(str(json_output[i][1]).strip("$")))
+        str_output+= f" The product is {i}, whose original is {json_output[i][0]} and discounted price is {json_output[i][1]}\n"
+
+    return str_output
+>>>>>>> 9cdfaf2204ff5da920a6ea4f5c532c087992e43a
 
    
 #print(get_product_price("Show me the price of the NORU Maruchi Perforated Leather Black Jacket from the competitor website."))
