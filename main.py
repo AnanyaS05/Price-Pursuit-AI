@@ -85,7 +85,7 @@ class PriceResponse(BaseModel):
 async def get_price_endpoint(request = PriceRequest):
     try:
         # Invoke the backend  gent
-        result = priceAgent.graph.invoke({"messages": [HumanMessage(content=user_input)]})
+        result = priceAgent.graph.invoke({"messages": [HumanMessage(content=request)]})
 
         # Extract and return the final message content
         output = result["messages"][-1].content
