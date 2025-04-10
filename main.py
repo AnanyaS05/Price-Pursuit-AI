@@ -28,6 +28,7 @@ def web_search_tool(query: str, num: int) -> list[Document]:
     documents = []
     for url in urls:
         documents.append(scrapeTool.scrape(url))
+    print(documents)
     return documents
 
 message = SystemMessage(
@@ -81,11 +82,11 @@ class PriceRequest(BaseModel):
 class PriceResponse(BaseModel):
     result : str
 
-@app.post("/get-price", responseModel = PriceResponse)
-async def get_price_endpoint(request = PriceRequest):
+@app.post("/get-price", response_model= PriceResponse)
+async def get_price_endpoint(request : PriceRequest):
     try:
-        # Invoke the backend  gent
-        result = priceAgent.graph.invoke({"messages": [HumanMessage(content=request)]})
+        # Invoke the backend agent
+        result = priceAgent.graph.invoke({"messages": [HumanMessage(content=request.input)]})
 
         # Extract and return the final message content
         output = result["messages"][-1].content
@@ -103,7 +104,7 @@ async def get_price_endpoint(request = PriceRequest):
             database.execute_query(i, float(str(json_output[i][0]).strip("$")), float(str(json_output[i][1]).strip("$")))
             str_output+= f" The product is {i}, whose original is {json_output[i][0]} and discounted price is {json_output[i][1]}\n"
 
-        return str_output
+        return PriceResponse(result=str_output)
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -133,7 +134,6 @@ def get_product_price(user_input: str) -> str:
         str_output+= f" The product is {i}, whose original is {json_output[i][0]} and discounted price is {json_output[i][1]}\n"
 
     return str_output
-
+'''
    
 #print(get_product_price("Show me the price of the NORU Maruchi Perforated Leather Black Jacket from the competitor website."))
-'''

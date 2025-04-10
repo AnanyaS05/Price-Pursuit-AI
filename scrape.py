@@ -6,7 +6,7 @@ from langchain_core.documents import Document
 class Scrape:
 
     def scrape(self, url: str) -> Document:
-
+        print("URLs into scraping:", url)
         try:
             with sync_playwright() as p:
                 __browser = p.chromium.launch(headless=True)
@@ -28,6 +28,7 @@ class Scrape:
                 __document = Document(page_content=f"{__text}",
                                     metadata={"source": url})
                 __browser.close()
+                print(__document)
                 return __document
         
         except Exception:
