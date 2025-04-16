@@ -1,5 +1,3 @@
-
-from pydantic import BaseModel
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -11,23 +9,30 @@ from agent import Agent
 from custom_search import CustomSearch
 from scrape import Scrape
 
+from playwright.async_api import async_playwright
+
 import json
+import asyncio
 
 customSearch = CustomSearch()
-scrapeTool = Scrape()
 import database
 
 
 @tool
-def web_search_tool(query: str, num: int) -> list[Document]:
-    """Search the web for a query and return the top num results."""
+async def web_search_tool(query: str, num: int) -> list[Document]:
+    """Search the web for a query and return the top num results asynchronously.
+    
+    The search is done synchronously, but scraping each URL is done in parallel."""
+
     urls = customSearch.search(query, num)
     print("URLS:", urls)
-    documents = []
-    for url in urls:
-        documents.append(scrapeTool.scrape(url))
 
-    print("Documents:", documents)
+    # Create tasks for scraping each URL concurrently.
+    tasks = [scrapeTool.ascrape(url) for url in urls]
+    
+    # Await all scraping tasks concurrently.
+    documents = await asyncio.gather(*tasks)
+
     return documents
 
 message = SystemMessage(
@@ -79,15 +84,15 @@ priceAgent = Agent([web_search_tool], [message])
 
 
 # --- Main function ---
-def get_product_price(user_input: str) -> str:
+async def get_product_price_async(user_input: str) -> str:
     """Takes a product name, queries the backend, and returns the price info."""
-    # Invoke the backend  gent
-    result = priceAgent.graph.invoke({"messages": [HumanMessage(content=user_input)]})
+    # Invoke the backend agent
+    result = await priceAgent.graph.ainvoke({"messages": [HumanMessage(content=user_input)]})
 
     # Extract and return the final message content
     output = result["messages"][-1].content
 
-    print(output)
+    #print(output)
 
     opening_index = output.index("{")
     closing_index = output.index("}")
@@ -103,5 +108,20 @@ def get_product_price(user_input: str) -> str:
 
     return str_output
 
-   
-#print(get_product_price("Show me the price of the NORU Maruchi Perforated Leather Black Jacket from the competitor website."))
+
+async def main():
+    query = "Show me the price of the NORU Maruchi Perforated Leather Black Jacket from the competitor website."
+
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=True)
+
+        # Create your Scrape tool with the browser instance
+        global scrapeTool
+        scrapeTool = Scrape(browser)
+
+        # Now run the agent with the scrape tool ready
+        result_str = await get_product_price_async(query)
+        print(result_str)
+
+# Run the event loop
+asyncio.run(main())
