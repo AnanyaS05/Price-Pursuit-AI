@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+
 from pydantic import BaseModel
 from dotenv import load_dotenv
 load_dotenv()
@@ -17,8 +17,6 @@ customSearch = CustomSearch()
 scrapeTool = Scrape()
 import database
 
-app = FastAPI()
-
 
 @tool
 def web_search_tool(query: str, num: int) -> list[Document]:
@@ -28,6 +26,8 @@ def web_search_tool(query: str, num: int) -> list[Document]:
     documents = []
     for url in urls:
         documents.append(scrapeTool.scrape(url))
+
+    print("Documents:", documents)
     return documents
 
 message = SystemMessage(
@@ -75,41 +75,9 @@ message = SystemMessage(
 
 priceAgent = Agent([web_search_tool], [message])
 
-class PriceRequest(BaseModel):
-    input : str
-
-class PriceResponse(BaseModel):
-    result : str
-
-@app.post("/get-price", responseModel = PriceResponse)
-async def get_price_endpoint(request = PriceRequest):
-    try:
-        # Invoke the backend  gent
-        result = priceAgent.graph.invoke({"messages": [HumanMessage(content=request)]})
-
-        # Extract and return the final message content
-        output = result["messages"][-1].content
-
-        print(output)
-        opening_index = output.index("{")
-        closing_index = output.index("}")
-        formatted_output = output[opening_index:(closing_index+1)]
-        
-        json_output = json.loads(formatted_output)
-
-        str_output = ""
-
-        for i in json_output:
-            database.execute_query(i, float(str(json_output[i][0]).strip("$")), float(str(json_output[i][1]).strip("$")))
-            str_output+= f" The product is {i}, whose original is {json_output[i][0]} and discounted price is {json_output[i][1]}\n"
-
-        return str_output
-    
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 
-'''
+
 # --- Main function ---
 def get_product_price(user_input: str) -> str:
     """Takes a product name, queries the backend, and returns the price info."""
@@ -120,6 +88,7 @@ def get_product_price(user_input: str) -> str:
     output = result["messages"][-1].content
 
     print(output)
+
     opening_index = output.index("{")
     closing_index = output.index("}")
     formatted_output = output[opening_index:(closing_index+1)]
@@ -136,4 +105,3 @@ def get_product_price(user_input: str) -> str:
 
    
 #print(get_product_price("Show me the price of the NORU Maruchi Perforated Leather Black Jacket from the competitor website."))
-'''
