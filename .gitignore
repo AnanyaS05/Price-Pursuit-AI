@@ -7,3 +7,5 @@ ms-playwright
 Scripts
 pyvenv.cfg
 __pycache__
+top_100_products_online_revzilla.csv
+product_list.py
