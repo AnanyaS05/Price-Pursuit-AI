@@ -27,6 +27,12 @@ async def web_search_tool(query: str, num: int) -> list[Document]:
     urls = customSearch.search(query, num)
     print("URLS:", urls)
 
+    if urls == ['No results found.']:
+        print(f"No URLs found for query: {query}. Falling back to database.")
+        # Fallback: query from your local database
+        database.fallback_query(query)
+
+
     # Create tasks for scraping each URL concurrently.
     tasks = [scrapeTool.ascrape(url) for url in urls]
     
@@ -84,10 +90,10 @@ priceAgent = Agent([web_search_tool], [message])
 
 
 # --- Main function ---
-async def get_product_price_async(user_input: str) -> str:
+async def get_product_price_async(product_names: list[str], user_query: str) -> str:
     """Takes a product name, queries the backend, and returns the price info."""
     # Invoke the backend agent
-    result = await priceAgent.graph.ainvoke({"messages": [HumanMessage(content=user_input)]})
+    result = await priceAgent.graph.ainvoke({"messages": [HumanMessage(content=user_query)]})
 
     # Extract and return the final message content
     output = result["messages"][-1].content
@@ -110,7 +116,10 @@ async def get_product_price_async(user_input: str) -> str:
 
 
 async def main():
-    query = "Show me the price of the NORU Maruchi Perforated Leather Black Jacket from the competitor website."
+    query = (
+    "Show me the price of the DBK Recking Crew Premium T-Shirt from the competitor website."
+    )
+
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
@@ -120,7 +129,7 @@ async def main():
         scrapeTool = Scrape(browser)
 
         # Now run the agent with the scrape tool ready
-        result_str = await get_product_price_async(query)
+        result_str = await get_product_price_async(["DBK Recking Crew Premium T-Shirt"], query)
         print(result_str)
 
 # Run the event loop

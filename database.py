@@ -43,3 +43,35 @@ def execute_query(product_name : str, original_price : float, discounted_price :
         cursor.close()
         conn.close()
 
+def fallback_query(product_name: str):
+    password = os.getenv("MYSQL_PASSWORD")
+    password = password
+    host = "localhost"
+    user = "root"
+    database = "price_pursuit_ai"
+
+    try:
+        conn = mysql.connector.connect(
+            host=host,
+            user=user,
+            password=password,
+            database=database
+        )
+
+        cursor = conn.cursor()
+
+        query = f"""
+            INSERT INTO SPEED_ADDICTS_PRODUCTS (PRODUCT_NAME, ORIGINAL_PRICE_USD, RUN_TIMESTAMP, DISCOUNTED_PRICE_USD)
+            VALUES (%s, NULL, NOW(), NULL);
+        """
+
+        cursor.execute(query, (product_name,))
+        conn.commit()
+        print(f"Fallback query inserted for: {product_name}")
+
+    except mysql.connector.Error as err:
+        print(f"Error: {err}")
+
+    finally:
+        cursor.close()
+        conn.close()
