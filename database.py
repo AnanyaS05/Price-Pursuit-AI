@@ -26,7 +26,7 @@ def execute_query(product_name : str, original_price : float, discounted_price :
         # Create a cursor object to interact with the database
         cursor = conn.cursor()
 
-        query = f"INSERT INTO SPEED_ADDICTS_PRODUCTS (PRODUCT_NAME, ORIGINAL_PRICE_USD, RUN_TIMESTAMP, DISCOUNTED_PRICE_USD) VALUES ('{product_name}', {original_price}, NOW(), {discounted_price});"
+        query = f"INSERT INTO SPEED_ADDICTS_PRODUCTS (PRODUCT_NAME, ORIGINAL_PRICE_USD, RUN_TIMESTAMP, DISCOUNTED_PRICE_USD, AVAILABLE_ONLINE) VALUES ('{product_name}', {original_price}, NOW(), {discounted_price}, TRUE);"
 
         # Execute the query
         cursor.execute(query)
@@ -61,8 +61,8 @@ def fallback_query(product_name: str):
         cursor = conn.cursor()
 
         query = f"""
-            INSERT INTO SPEED_ADDICTS_PRODUCTS (PRODUCT_NAME, ORIGINAL_PRICE_USD, RUN_TIMESTAMP, DISCOUNTED_PRICE_USD)
-            VALUES (%s, NULL, NOW(), NULL);
+            INSERT INTO SPEED_ADDICTS_PRODUCTS (PRODUCT_NAME, ORIGINAL_PRICE_USD, RUN_TIMESTAMP, DISCOUNTED_PRICE_USD, AVAILABLE_ONLINE)
+            VALUES (%s, NULL, NOW(), NULL, FALSE);
         """
 
         cursor.execute(query, (product_name,))
