@@ -6,7 +6,7 @@ from langchain_core.documents import Document
 from langchain_core.tools import tool
 
 from agent import Agent
-from custom_search import CustomSearch
+from custom_search_sa import CustomSearch
 from scrape import Scrape
 
 from playwright.async_api import async_playwright
@@ -24,14 +24,14 @@ async def web_search_tool(query: str, num: int) -> list[Document]:
     
     The search is done synchronously, but scraping each URL is done in parallel."""
 
-    urls = customSearch.search(query, num)
+    urls = customSearch.search(query, num, "www.speedaddicts.com")
     print("URLS:", urls)
 
     if urls == ['No results found.']:
         print(f"No URLs found for query: {query}. Falling back to database.")
         # Fallback: query from your local database
         database.fallback_query(query)
-
+        return []
 
     # Create tasks for scraping each URL concurrently.
     tasks = [scrapeTool.ascrape(url) for url in urls]
@@ -91,46 +91,68 @@ priceAgent = Agent([web_search_tool], [message])
 
 # --- Main function ---
 async def get_product_price_async(product_names: list[str], user_query: str) -> str:
-    """Takes a product name, queries the backend, and returns the price info."""
-    # Invoke the backend agent
-    result = await priceAgent.graph.ainvoke({"messages": [HumanMessage(content=user_query)]})
-
-    # Extract and return the final message content
+    """Takes a list of product names and a query, invokes the agent, 
+    writes prices or fallbacks to the database, and returns a summary."""
+    
+    # Invoke the agent
+    result = await priceAgent.graph.ainvoke({
+        "messages": [HumanMessage(content=user_query)]
+    })
     output = result["messages"][-1].content
 
-    #print(output)
+    # Check for JSON payload
+    if "{" not in output or "}" not in output:
+        # No JSON at all: fallback for every product
+        for name in product_names:
+            database.fallback_query(name)
+        return "No prices returned—logged fallback for all products."
 
-    opening_index = output.index("{")
-    closing_index = output.index("}")
-    formatted_output = output[opening_index:(closing_index+1)]
-    
-    json_output = json.loads(formatted_output)
+    # Extract the JSON substring
+    start = output.index("{")
+    end   = output.rindex("}") + 1
+    try:
+        prices_dict = json.loads(output[start:end])
+        print(prices_dict)
+    except json.JSONDecodeError:
+        # Bad JSON: fallback for all
+        for name in product_names:
+            database.fallback_query(name)
+        return "Malformed JSON—logged fallback for all products."
 
-    str_output = ""
+    found = set(prices_dict.keys())
+    lines = []
 
-    for i in json_output:
-        database.execute_query(i, float(str(json_output[i][0]).strip("$")), float(str(json_output[i][1]).strip("$")))
-        str_output+= f" The product is {i}, whose original is {json_output[i][0]} and discounted price is {json_output[i][1]}\n"
+    # Insert valid prices or fallback on invalid
+    for name, (orig, disc) in prices_dict.items():
+        orig_str = str(orig).lstrip("$")
+        disc_str = str(disc).lstrip("$")
+        try:
+            orig_val = float(orig_str)
+            disc_val = float(disc_str)
+            database.execute_query(name, orig_val, disc_val)
+            lines.append(f"✔ {name}: original={orig}, discounted={disc}")
+        except ValueError:
+            database.fallback_query(name)
+            lines.append(f"⚠ {name}: invalid price (‘{orig}/{disc}’), logged fallback")
 
-    return str_output
+    # Fallback for any names not returned
+    for name in product_names:
+        if name not in found:
+            database.fallback_query(name)
+            lines.append(f"⚠ {name}: not found, logged fallback")
 
+    return "\n".join(lines)
 
 async def main():
-    query = (
-    "Show me the price of the DBK Recking Crew Premium T-Shirt from the competitor website."
-    )
-
-
+    product_names = ["DBK Recking Crew Premium T-Shirt", "Klim Kaos Youth Pants", "Continental ContiStreet Tires",
+        "Dainese Druid 4 Gloves"]
+    query = "Show me the price of the DBK Recking Crew Premium T-Shirt, Klim Kaos Youth Pants, Continental ContiStreet Tires and the Dainese Druid 4 Gloves from the competitor website."
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
-
-        # Create your Scrape tool with the browser instance
         global scrapeTool
         scrapeTool = Scrape(browser)
-
-        # Now run the agent with the scrape tool ready
-        result_str = await get_product_price_async(["DBK Recking Crew Premium T-Shirt"], query)
+        result_str = await get_product_price_async(product_names, query)
         print(result_str)
 
-# Run the event loop
-asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(main())

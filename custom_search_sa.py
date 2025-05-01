@@ -8,7 +8,7 @@ class CustomSearch:
         self.__creds = self.__auth.cred_token_auth()
         self.__service = build("customsearch", "v1", credentials=self.__creds)
     
-    def search(self, query: str, num: int) -> list[str]:
+    def search(self, query: str, num: int, site: str) -> list[str]:
         try:
             search = self.__service.cse().list(
                 cx=os.getenv("SEARCH_ENGINE_ID"),
@@ -16,7 +16,9 @@ class CustomSearch:
                 num=num, # Number of search results
                 q=query, # Search query
                 c2coff=1, # To disable search results in chinese
-                hl="en" # To search in English language
+                hl="en", # To search in English language
+                siteSearch= site,        # ← restrict to this site
+                siteSearchFilter="i"                  # ← include only pages from that site
             ).execute()
 
             #print("Search response:", search)

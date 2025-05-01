@@ -24,7 +24,7 @@ class Scrape:
             await page.wait_for_selector("body", timeout=60000)
             html = await page.content()
             soup = BeautifulSoup(html, "html.parser")
-            text_elements = soup.find_all(["p", "h1", "h2", "h3", "h4", "h5", "h6", "span", "a", "li", "ul", "main", "div", "article"])
+            text_elements = soup.find_all(["p", "h1", "h2", "h3", "h4", "h5", "h6", "span", "a", "li", "ul", "main", "div", "article", "label"])
             text = "\n".join([elem.get_text(strip=True) for elem in text_elements])
 
             await context.close()
